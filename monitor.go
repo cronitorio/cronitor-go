@@ -1,6 +1,7 @@
 package cronitor
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -47,6 +49,9 @@ type Monitor struct {
 	apiKey     string
 	apiVersion string
 	env        string
+
+	mu   sync.Mutex
+	data MonitorData
 }
 
 // MonitorOption customises a Monitor created with NewMonitor.
@@ -188,4 +193,106 @@ func formatMetrics(metrics map[string]float64) []string {
 // formatStamp renders a time as unix seconds with fractional precision.
 func formatStamp(t time.Time) string {
 	return strconv.FormatFloat(float64(t.UnixNano())/1e9, 'f', 6, 64)
+}
+
+// Data returns the monitor document, fetching it from the Monitor API on
+// first use and caching it afterwards. Use Fetch to force a refresh.
+func (m *Monitor) Data() (MonitorData, error) {
+	m.mu.Lock()
+	cached := m.data
+	m.mu.Unlock()
+	if cached != nil {
+		return cached, nil
+	}
+	return m.Fetch()
+}
+
+// Fetch retrieves the monitor document from the Monitor API and caches it.
+// It returns MonitorNotFoundError for an unknown key and AuthenticationError
+// when no api key is configured.
+func (m *Monitor) Fetch() (MonitorData, error) {
+	apiKey := m.APIKey()
+	if apiKey == "" {
+		return nil, &AuthenticationError{Message: noAPIKeyMessage}
+	}
+
+	resp, err := doAPI(apiRequest{
+		method:      http.MethodGet,
+		url:         monitorAPIURL(m.Key),
+		apiKey:      apiKey,
+		apiVersion:  m.APIVersion(),
+		contentType: "application/json",
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return nil, &MonitorNotFoundError{Key: m.Key}
+	case resp.StatusCode < 200 || resp.StatusCode >= 300:
+		return nil, resp.unexpected()
+	}
+
+	var data MonitorData
+	if err := json.Unmarshal(resp.Body, &data); err != nil {
+		return nil, &APIError{StatusCode: resp.StatusCode, Body: string(resp.Body), Err: err}
+	}
+	m.setData(data)
+	return data, nil
+}
+
+// setData replaces the cached monitor document.
+func (m *Monitor) setData(data MonitorData) {
+	m.mu.Lock()
+	m.data = data
+	m.mu.Unlock()
+}
+
+// Delete destroys the monitor. It returns MonitorNotFoundError if the key is
+// unknown and APIError for any other failure.
+func (m *Monitor) Delete() error {
+	resp, err := doAPI(apiRequest{
+		method: http.MethodDelete,
+		url:    monitorAPIURL(m.Key),
+		apiKey: m.APIKey(),
+	})
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		return nil
+	case http.StatusNotFound:
+		return &MonitorNotFoundError{Key: m.Key}
+	default:
+		return &APIError{StatusCode: resp.StatusCode, Body: fmt.Sprintf("an unexpected error occurred when deleting '%s': %s", m.Key, resp.Body)}
+	}
+}
+
+// Pause pauses alerting for the monitor for the given number of hours. Pass 0
+// to resume alerting. Like Ping, it is a logged no-op without an api key.
+func (m *Monitor) Pause(hours int) error {
+	apiKey := m.APIKey()
+	if apiKey == "" {
+		Logger.Print(noAPIKeyMessage)
+		return nil
+	}
+	resp, err := doAPI(apiRequest{
+		method: http.MethodGet,
+		url:    fmt.Sprintf("%s/pause/%d", monitorAPIURL(m.Key), hours),
+		apiKey: apiKey,
+		client: pingClient(),
+	})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return resp.unexpected()
+	}
+	return nil
+}
+
+// Unpause resumes alerting for the monitor. It is shorthand for Pause(0).
+func (m *Monitor) Unpause() error {
+	return m.Pause(0)
 }
