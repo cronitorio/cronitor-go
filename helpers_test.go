@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 )
 
 // resetSettings restores the package-level settings to their zero/default
@@ -62,9 +63,11 @@ func newTestServer(t *testing.T, handler http.HandlerFunc) *testServer {
 	resetSettings()
 	PingURL = ts.URL + "/p"
 	MonitorAPIURL = ts.URL + "/api/monitors"
+	retryBackoff = time.Millisecond
 	t.Cleanup(func() {
 		ts.Close()
 		resetSettings()
+		retryBackoff = defaultRetryBackoff
 	})
 	return ts
 }
