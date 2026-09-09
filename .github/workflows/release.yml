@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v prefix (e.g. 1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write # create the release tag on workflow_dispatch
 
 jobs:
   release:
@@ -13,11 +22,30 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - name: Check tag is a semantic version
+      - name: Resolve version
+        id: version
         run: |
-          echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            || { echo "Tag ${GITHUB_REF_NAME} is not vMAJOR.MINOR.PATCH"; exit 1; }
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "Version ${version} is not MAJOR.MINOR.PATCH"; exit 1; }
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
       - name: Run Tests
         run: go test -race ./...
+      - name: Create release tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          tag="v${{ steps.version.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists"; exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "Release ${tag}"
+          git push origin "${tag}"
       - name: Request pkg.go.dev index
-        run: curl -sSf "https://proxy.golang.org/github.com/cronitorio/cronitor-go/@v/${GITHUB_REF_NAME}.info"
+        continue-on-error: true
+        run: curl -sSf "https://proxy.golang.org/github.com/cronitorio/cronitor-go/@v/v${{ steps.version.outputs.version }}.info"
