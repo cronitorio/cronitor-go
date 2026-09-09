@@ -252,3 +252,15 @@ func TestNewJobReturnsReusableFunc(t *testing.T) {
 		t.Errorf("each invocation should ping run + complete, got %d pings", n)
 	}
 }
+
+func TestNewJobQueuesAttributesBeforeFirstRun(t *testing.T) {
+	t.Cleanup(clearMonitorAttributes)
+
+	_ = NewJob("new-job-attrs", func() (any, error) { return nil, nil },
+		WithAttributes(map[string]any{"schedule": "0 8 * * *"}))
+
+	queued := QueuedMonitorAttributes()
+	if len(queued) != 1 || queued[0]["key"] != "new-job-attrs" || queued[0]["schedule"] != "0 8 * * *" {
+		t.Fatalf("expected attributes queued at wrap time, got %v", queued)
+	}
+}

@@ -48,6 +48,13 @@ func Job(key string, fn func() (any, error), opts ...JobOption) (any, error) {
 // NewJob wraps fn so that every invocation of the returned function is
 // monitored exactly like Job. It is the closest equivalent to a decorator.
 func NewJob(key string, fn func() (any, error), opts ...JobOption) func() (any, error) {
+	cfg := jobConfig{logOutput: true}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	if cfg.attributes != nil {
+		queueMonitorAttributes(key, cfg.attributes)
+	}
 	return func() (any, error) { return RunJob(key, fn, opts...) }
 }
 

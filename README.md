@@ -59,7 +59,7 @@ Options: `cronitor.WithJobEnv("staging")` sends the pings with a specific enviro
 
 #### You can provide monitor attributes that will be synced when your app starts
 
-To sync attributes, provide an API key with monitor:write privileges. Attributes are queued by `cronitor.WithAttributes` and sent to Cronitor with a single call to `cronitor.SyncMonitors()`, so call it once your jobs are registered (there is no background goroutine).
+To sync attributes, provide an API key with monitor:write privileges. Attributes are queued by `cronitor.WithAttributes` and sent to Cronitor with a single call to `cronitor.SyncMonitors()`, so call it once your jobs are registered (there is no background goroutine). `NewJob` queues attributes when the job is wrapped; `Job` and `RunJob` queue them each time they run. The queue holds one entry per monitor key, so the most recent attributes for a key win.
 
 ```go
 // Copy your SDK Integration key from https://cronitor.io/app/settings/api
