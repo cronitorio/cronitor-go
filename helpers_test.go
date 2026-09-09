@@ -2,10 +2,12 @@ package cronitor
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -28,7 +30,7 @@ func resetSettings() {
 type recordedRequest struct {
 	Method string
 	Path   string
-	Query  map[string][]string
+	Query  url.Values
 	Header http.Header
 	Body   string
 }
@@ -89,3 +91,6 @@ func captureLog(t *testing.T) *bytes.Buffer {
 	t.Cleanup(func() { Logger = prev })
 	return buf
 }
+
+// asError is a tiny wrapper around errors.As to keep test call sites short.
+func asError[T any](err error, target *T) bool { return errors.As(err, target) }
