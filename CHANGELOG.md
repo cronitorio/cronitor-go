@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.1
+
+- The `User-Agent` header now includes the package version, for example `cronitor-go/1.0.1`.
+- Added `cronitor.Version`.
+
 ## 1.0.0
 
 Initial release.

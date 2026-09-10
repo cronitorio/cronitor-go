@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	userAgent           = "cronitor-go"
+	userAgent           = "cronitor-go/" + Version
 	defaultMaxRetries   = 3
 	defaultRetryBackoff = 300 * time.Millisecond
 )

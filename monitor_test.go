@@ -56,8 +56,8 @@ func TestFetchMonitor(t *testing.T) {
 	if got := r.Header.Get("Authorization"); got != basicAuth(fakeMonitorAPIKey) {
 		t.Errorf("want basic auth with api key as username, got %q", got)
 	}
-	if got := r.Header.Get("User-Agent"); got != "cronitor-go" {
-		t.Errorf("want User-Agent cronitor-go, got %q", got)
+	if got := r.Header.Get("User-Agent"); got != "cronitor-go/"+Version {
+		t.Errorf("want User-Agent cronitor-go/%s, got %q", Version, got)
 	}
 	if got := r.Header.Get("Cronitor-Version"); got != "2020-10-01" {
 		t.Errorf("want Cronitor-Version header, got %q", got)
@@ -207,7 +207,7 @@ func TestPauseAndUnpause(t *testing.T) {
 	if reqs[0].Header.Get("Authorization") != basicAuth(fakeMonitorAPIKey) {
 		t.Error("pause must use basic auth")
 	}
-	if reqs[0].Header.Get("User-Agent") != "cronitor-go" {
+	if reqs[0].Header.Get("User-Agent") != "cronitor-go/"+Version {
 		t.Error("pause must send User-Agent")
 	}
 }

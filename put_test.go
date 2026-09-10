@@ -56,7 +56,7 @@ func TestPutMonitors(t *testing.T) {
 	if r.Header.Get("Authorization") != basicAuth(fakeMonitorAPIKey) {
 		t.Error("put must use basic auth")
 	}
-	if r.Header.Get("Cronitor-Version") != "2020-10-01" || r.Header.Get("User-Agent") != "cronitor-go" {
+	if r.Header.Get("Cronitor-Version") != "2020-10-01" || r.Header.Get("User-Agent") != "cronitor-go/"+Version {
 		t.Error("put must send Cronitor-Version and User-Agent")
 	}
 	var payload map[string]any

@@ -33,7 +33,7 @@ func TestPingURLAndDefaults(t *testing.T) {
 	if want := "/p/" + fakeAPIKey + "/" + fakeKey; r.Path != want {
 		t.Errorf("want path %s, got %s", want, r.Path)
 	}
-	if r.Header.Get("User-Agent") != "cronitor-go" {
+	if r.Header.Get("User-Agent") != "cronitor-go/"+Version {
 		t.Errorf("want User-Agent cronitor-go, got %q", r.Header.Get("User-Agent"))
 	}
 	if r.Header.Get("Authorization") != "" {
