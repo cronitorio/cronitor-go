@@ -96,12 +96,16 @@ monitor.Ping(cronitor.PingOptions{
     State:   cronitor.StateRun, // run|complete|fail used to measure lifecycle of a job, ok used for manual reset only.
     Message: "",                // message that will be displayed in alerts as well as monitor activity panel on your dashboard.
     Metrics: map[string]float64{
-        "duration":    100,  // how long the job ran (complete|fail only). cronitor will calculate this when not provided
-        "count":       4500, // if your job is processing a number of items you can report a count
-        "error_count": 10,   // the number of errors that occurred while this job was running
+        "duration":      100,  // how long the job ran (complete|fail only). cronitor will calculate this when not provided
+        "count":         4500, // if your job is processing a number of items you can report a count
+        "error_count":   10,   // the number of errors that occurred while this job was running
+        "queue_depth":   42,   // custom names are sent as metric=name:value alongside the built-ins
+        "quality_score": 0.98,
     },
 })
 ```
+
+`PingOptions.Metrics` accepts any metric name. Built-ins (`duration`, `count`, `error_count`) have special meaning in Cronitor; other keys such as `queue_depth` or `quality_score` are sent as additional `metric=name:value` query parameters.
 
 `Ping` returns an error if the request could not be delivered. If no API key is configured it logs an error and returns `nil` without sending anything, so a missing key never breaks your job.
 
